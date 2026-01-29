@@ -1,6 +1,6 @@
 // client/src/api/http.js
 
-const API_BASE = `https://montazh.kairosost38500.workers.dev/`;
+const API_BASE = `https://montazh.kairosost38500.workers.dev`;
 
 
 /**
