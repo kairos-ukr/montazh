@@ -27,6 +27,9 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthProvider";
 
+// ✅ імпорт http.js
+import { apiGet, apiPost } from "../api/http";
+
 /* ---------------- helpers ---------------- */
 
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -75,23 +78,6 @@ const isDateInPast = (date) => {
 
   return target < today;
 };
-
-async function apiFetch(path, { method = "GET", body } = {}) {
-  const res = await fetch(path, {
-    method,
-    credentials: "include", // cookie auth
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data?.error || `HTTP ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  return data;
-}
 
 /* ---------------- UI components ---------------- */
 
@@ -359,7 +345,10 @@ const SchedulePreview = ({
           schedule.map((item) => {
             const isCustom = item.installationId === "custom";
 
-            const inst = !isCustom && item.installationId != null ? installationById.get(String(item.installationId)) : null;
+            const inst =
+              !isCustom && item.installationId != null
+                ? installationById.get(String(item.installationId))
+                : null;
 
             const instName = isCustom
               ? item.notes || "Кастомне завдання"
@@ -541,7 +530,9 @@ export default function WorkCalendar() {
 
     try {
       const startStr = formatDateToYYYYMMDD(currentWeekStart);
-      const data = await apiFetch(`/api/work-calendar/week?start=${startStr}`);
+
+      // ✅ було apiFetch -> тепер apiGet
+      const data = await apiGet(`/api/work-calendar/week?start=${startStr}`);
 
       setCanManageSchedule(!!data.canManageSchedule);
       setInstallations(data.installations || []);
@@ -549,11 +540,9 @@ export default function WorkCalendar() {
       setTimeOffMap(data.timeOffMap || {});
       setAssignmentsByDate(data.assignmentsByDate || {});
     } catch (e) {
-      if (e.status === 401) {
-        setAuthError("Не авторизовано (нема активної сесії).");
-      } else {
-        setAuthError("Помилка завантаження: " + e.message);
-      }
+      // http.js кидає Error без status, тому 401 тут не виявляємо по e.status
+      // Логіку не міняю: просто показуємо те саме повідомлення "Помилка завантаження"
+      setAuthError("Помилка завантаження: " + (e?.message || "Unknown error"));
       const uiCan = role === "admin" || role === "super_admin" || role === "office";
       setCanManageSchedule(uiCan);
     } finally {
@@ -688,9 +677,11 @@ export default function WorkCalendar() {
     const dateStr = formatDateToYYYYMMDD(editingDate);
 
     try {
-      await apiFetch("/api/work-calendar/day/absence", {
-        method: "POST",
-        body: { date: dateStr, employee_custom_id: empId, status },
+      // ✅ було apiFetch -> тепер apiPost
+      await apiPost("/api/work-calendar/day/absence", {
+        date: dateStr,
+        employee_custom_id: empId,
+        status,
       });
 
       setTimeOffMap((prev) => ({
@@ -700,7 +691,7 @@ export default function WorkCalendar() {
 
       setDayAssignments((prev) => prev.map((a) => ({ ...a, workers: a.workers.filter((w) => w !== empId) })));
     } catch (e) {
-      alert("Помилка: " + e.message);
+      alert("Помилка: " + (e?.message || "Unknown error"));
     }
   };
 
@@ -709,9 +700,10 @@ export default function WorkCalendar() {
     const dateStr = formatDateToYYYYMMDD(editingDate);
 
     try {
-      await apiFetch("/api/work-calendar/day/absence/cancel", {
-        method: "POST",
-        body: { date: dateStr, employee_custom_id: empId },
+      // ✅ було apiFetch -> тепер apiPost
+      await apiPost("/api/work-calendar/day/absence/cancel", {
+        date: dateStr,
+        employee_custom_id: empId,
       });
 
       setTimeOffMap((prev) => {
@@ -720,7 +712,7 @@ export default function WorkCalendar() {
         return { ...prev, [dateStr]: day };
       });
     } catch (e) {
-      alert("Помилка скасування: " + e.message);
+      alert("Помилка скасування: " + (e?.message || "Unknown error"));
     }
   };
 
@@ -763,15 +755,16 @@ export default function WorkCalendar() {
     const dateStr = formatDateToYYYYMMDD(editingDate);
 
     try {
-      await apiFetch("/api/work-calendar/day/save", {
-        method: "POST",
-        body: { date: dateStr, assignments: dayAssignments },
+      // ✅ було apiFetch -> тепер apiPost
+      await apiPost("/api/work-calendar/day/save", {
+        date: dateStr,
+        assignments: dayAssignments,
       });
 
       await loadWeekData();
       closeDayEditor();
     } catch (e) {
-      alert("Помилка: " + e.message);
+      alert("Помилка: " + (e?.message || "Unknown error"));
     } finally {
       setSaving(false);
     }
@@ -824,7 +817,12 @@ export default function WorkCalendar() {
               className="relative group cursor-pointer px-4 py-1.5 rounded-xl hover:bg-gray-50 transition-colors"
               title="Перейти до дати"
             >
-              <input ref={dateInputRef} type="date" onChange={handleJumpToDate} className="absolute top-0 left-0 w-0 h-0 opacity-0" />
+              <input
+                ref={dateInputRef}
+                type="date"
+                onChange={handleJumpToDate}
+                className="absolute top-0 left-0 w-0 h-0 opacity-0"
+              />
               <div className="text-center">
                 <h2 className="text-base font-bold text-gray-800 flex items-center justify-center gap-2 group-hover:text-indigo-600 transition-colors">
                   <FaRegCalendarAlt className="text-indigo-500" />
@@ -893,7 +891,10 @@ export default function WorkCalendar() {
                     {dayTasks.length > 0 ? (
                       dayTasks.map((task, i) => {
                         const isCustom = task.installationId === "custom";
-                        const inst = !isCustom && task.installationId != null ? installationById.get(String(task.installationId)) : null;
+                        const inst =
+                          !isCustom && task.installationId != null
+                            ? installationById.get(String(task.installationId))
+                            : null;
 
                         const instName = isCustom
                           ? task.notes || "Без назви"
@@ -911,7 +912,9 @@ export default function WorkCalendar() {
                             <div className="flex items-center gap-1.5 min-w-0">
                               {isCustom ? <FaTasks size={10} /> : <FaBriefcase size={10} />}
                               <span className="truncate">{instName}</span>
-                              <span className="opacity-60 ml-auto text-[10px] flex-shrink-0">{task.workers.length}</span>
+                              <span className="opacity-60 ml-auto text-[10px] flex-shrink-0">
+                                {task.workers.length}
+                              </span>
                             </div>
 
                             {!isCustom && task.notes && (
