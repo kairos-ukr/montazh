@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/montazh/static/css/main.3ec584a5.css",
-    "main.js": "/montazh/static/js/main.5dd3d9df.js",
+    "main.js": "/montazh/static/js/main.2b6fb516.js",
     "static/media/logo.png": "/montazh/static/media/logo.1bdafa95d65c08ccff96.png",
     "static/media/logoCore1.png": "/montazh/static/media/logoCore1.5a6ec39e808a56b81dff.png",
     "index.html": "/montazh/index.html",
     "main.3ec584a5.css.map": "/montazh/static/css/main.3ec584a5.css.map",
-    "main.5dd3d9df.js.map": "/montazh/static/js/main.5dd3d9df.js.map"
+    "main.2b6fb516.js.map": "/montazh/static/js/main.2b6fb516.js.map"
   },
   "entrypoints": [
     "static/css/main.3ec584a5.css",
-    "static/js/main.5dd3d9df.js"
+    "static/js/main.2b6fb516.js"
   ]
 }
